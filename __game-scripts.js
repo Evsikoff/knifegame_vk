@@ -1466,26 +1466,26 @@ Savefile.resetOnLoad = 0, Savefile.nameFile = "SliceMasterPoki_Save", Savefile.a
 }, Savefile.reset = function() {
     for (var e in Savefile.data) Savefile.data[e] = Savefile.defData[e];
     Savefile.autoSave && Savefile.save()
-}, Savefile.storeOb = null, Savefile.yandexCloudLoaded = !1, Savefile.loadFromLocalStorage = function() {
+}, Savefile.storeOb = null, Savefile.vkStorageLoaded = !1, Savefile.loadFromLocalStorage = function() {
     if (Savefile.storeOb = store.get(Savefile.nameFile), Savefile.storeOb || (Savefile.storeOb = {}), Savefile.resetOnLoad) Savefile.reset();
     else
         for (var e in Savefile.data) e in Savefile.storeOb ? Savefile.data[e] = Savefile.storeOb[e] : Savefile.data[e] = Savefile.defData[e]
 }, Savefile.load = async function() {
-    // First try to load from Yandex Cloud
-    if (window.loadFromYandexCloud) {
+    // First try to load from VK Storage
+    if (window.loadFromVKStorage) {
         try {
-            var cloudData = await window.loadFromYandexCloud();
+            var cloudData = await window.loadFromVKStorage();
             if (cloudData && Object.keys(cloudData).length > 0) {
-                console.log("Loaded save data from Yandex Cloud");
+                console.log("Loaded save data from VK Storage");
                 Savefile.storeOb = cloudData;
-                Savefile.yandexCloudLoaded = !0;
+                Savefile.vkStorageLoaded = !0;
                 for (var e in Savefile.data) e in Savefile.storeOb ? Savefile.data[e] = Savefile.storeOb[e] : Savefile.data[e] = Savefile.defData[e];
                 // Also save to localStorage for backup
                 store.set(Savefile.nameFile, Savefile.storeOb);
                 return;
             }
         } catch (err) {
-            console.log("Failed to load from Yandex Cloud, falling back to localStorage:", err);
+            console.log("Failed to load from VK Storage, falling back to localStorage:", err);
         }
     }
     // Fallback to localStorage
@@ -1495,10 +1495,10 @@ Savefile.resetOnLoad = 0, Savefile.nameFile = "SliceMasterPoki_Save", Savefile.a
     for (var e in Savefile.data) Savefile.storeOb[e] = Savefile.data[e];
     // Save to localStorage
     store.set(Savefile.nameFile, Savefile.storeOb);
-    // Also save to Yandex Cloud
-    if (window.saveToYandexCloud) {
-        window.saveToYandexCloud(Savefile.storeOb).catch(function(err) {
-            console.log("Failed to save to Yandex Cloud:", err);
+    // Also save to VK Storage
+    if (window.saveToVKStorage) {
+        window.saveToVKStorage(Savefile.storeOb).catch(function(err) {
+            console.log("Failed to save to VK Storage:", err);
         });
     }
 }, Savefile.get = function(e) {
@@ -1582,11 +1582,6 @@ async function initializeGamePoki() {
     Input.mouseDis = !0;
     // Signal that game is ready
     PokiSDK.gameLoadingFinished();
-    // Check language from Yandex SDK
-    if (window.ysdk && window.ysdk.environment && window.ysdk.environment.i18n) {
-        var lang = window.ysdk.environment.i18n.lang;
-        console.log("Yandex Game language: " + lang);
-    }
     // Start gameplay
     PokiSDK.gameplayStart();
     this.muteSoundState = !1;
@@ -1701,7 +1696,7 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
             gameInstance.initialize2();
         } else {
             PokiSDK.init().then(function() {
-                console.log("Yandex SDK successfully initialized");
+                console.log("VK Bridge successfully initialized");
                 initializeGamePoki();
             }).catch(function() {
                 console.log("Initialized, something went wrong, load game anyway");

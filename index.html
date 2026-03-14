@@ -7,8 +7,8 @@
     <link rel="manifest" href="manifest.json">
     <style></style>
     <title>Кизлярский нож</title>
-    <!-- Yandex Games SDK -->
-    <script src="https://yandex.ru/games/sdk/v2"></script>
+    <!-- VK Bridge SDK -->
+    <script src="https://unpkg.com/@vkontakte/vk-bridge/dist/browser.min.js"></script>
     <script src="playcanvas-stable.min.js"></script>
     <script src="__settings__.js"></script>
 </head>
@@ -17,12 +17,14 @@
     <script src="__start__.js"></script>
     <script src="__loading__.js"></script>
 
-    <!-- Yandex SDK initialization and global handlers -->
+    <!-- VK Bridge initialization and global handlers -->
     <script>
-        // Global variables for Yandex SDK
-        window.ysdk = null;
-        window.yandexPlayer = null;
-        window.isYandexSDKReady = false;
+        // Global variables for VK Bridge
+        window.vkBridgeReady = false;
+
+        // Detect platform: Odnoklassniki or VK
+        var _urlParams = new URLSearchParams(window.location.search);
+        window.isOdnoklassniki = (_urlParams.get('vk_client') === 'ok');
 
         // Block right-click context menu
         document.addEventListener('contextmenu', function(e) {
@@ -49,162 +51,134 @@
             e.preventDefault();
         }, { passive: false });
 
-        // Initialize Yandex SDK
-        async function initYandexSDK() {
-            try {
-                window.ysdk = await YaGames.init();
-                console.log('Yandex SDK initialized successfully');
-
-                // Get language from SDK
-                const lang = window.ysdk.environment.i18n.lang;
-                console.log('Yandex SDK language:', lang);
-
-                // Initialize player for cloud saves
-                try {
-                    window.yandexPlayer = await window.ysdk.getPlayer({ scopes: false });
-                    console.log('Yandex Player initialized');
-                } catch (playerError) {
-                    console.log('Player initialization without scopes failed, trying with scopes:', playerError);
-                    try {
-                        window.yandexPlayer = await window.ysdk.getPlayer();
-                        console.log('Yandex Player initialized with default scopes');
-                    } catch (e) {
-                        console.log('Could not initialize player:', e);
+        // Initialize VK Bridge
+        function initVKBridge() {
+            return vkBridge.send('VKWebAppInit')
+                .then(function(data) {
+                    if (data.result) {
+                        window.vkBridgeReady = true;
+                        console.log('VK Bridge initialized successfully');
                     }
-                }
-
-                window.isYandexSDKReady = true;
-                return true;
-            } catch (e) {
-                console.error('Yandex SDK initialization failed:', e);
-                window.isYandexSDKReady = false;
-                return false;
-            }
-        }
-
-        // Cloud save functions
-        async function saveToYandexCloud(data) {
-            if (window.yandexPlayer) {
-                try {
-                    await window.yandexPlayer.setData(data, true);
-                    console.log('Data saved to Yandex cloud');
-                    return true;
-                } catch (e) {
-                    console.error('Failed to save to Yandex cloud:', e);
+                    return data.result;
+                })
+                .catch(function(error) {
+                    console.error('VK Bridge initialization failed:', error);
+                    window.vkBridgeReady = false;
                     return false;
-                }
-            }
-            return false;
+                });
         }
 
-        async function loadFromYandexCloud() {
-            if (window.yandexPlayer) {
-                try {
-                    const data = await window.yandexPlayer.getData();
-                    console.log('Data loaded from Yandex cloud:', data);
-                    return data;
-                } catch (e) {
-                    console.error('Failed to load from Yandex cloud:', e);
-                    return null;
-                }
-            }
-            return null;
-        }
+        // VK Storage save function (replaces Yandex Cloud save)
+        window.saveToVKStorage = function(data) {
+            var progressString = JSON.stringify(data);
+            return vkBridge.send('VKWebAppStorageSet', {
+                key: 'gameState',
+                value: progressString
+            })
+                .then(function(res) {
+                    if (res.result) {
+                        console.log('Data saved to VK Storage');
+                    }
+                    return res.result;
+                })
+                .catch(function(error) {
+                    console.error('Failed to save to VK Storage:', error);
+                    return false;
+                });
+        };
 
-        // Rewarded video ad function
-        function showYandexRewardedAd(callbacks) {
-            if (window.ysdk) {
-                // Stop gameplay before showing ad
-                notifyGameplayStop();
-                window.ysdk.adv.showRewardedVideo({
-                    callbacks: {
-                        onOpen: function() {
-                            console.log('Video ad open.');
-                            if (callbacks && callbacks.onOpen) callbacks.onOpen();
-                        },
-                        onRewarded: function() {
-                            console.log('Rewarded!');
-                            if (callbacks && callbacks.onRewarded) callbacks.onRewarded();
-                        },
-                        onClose: function() {
-                            console.log('Video ad closed.');
-                            // Resume gameplay after ad closes
-                            notifyGameplayStart();
-                            if (callbacks && callbacks.onClose) callbacks.onClose();
-                        },
-                        onError: function(e) {
-                            console.log('Error while open video ad:', e);
-                            // Resume gameplay on error as well
-                            notifyGameplayStart();
-                            if (callbacks && callbacks.onError) callbacks.onError(e);
+        // VK Storage load function (replaces Yandex Cloud load)
+        window.loadFromVKStorage = function() {
+            return vkBridge.send('VKWebAppStorageGet', { keys: ['gameState'] })
+                .then(function(data) {
+                    if (data.keys) {
+                        var entry = data.keys.find(function(k) { return k.key === 'gameState'; });
+                        if (entry && entry.value) {
+                            var progressObj = JSON.parse(entry.value);
+                            console.log('Data loaded from VK Storage:', progressObj);
+                            return progressObj;
                         }
                     }
+                    return null;
+                })
+                .catch(function(error) {
+                    console.error('Failed to load from VK Storage:', error);
+                    return null;
                 });
+        };
+
+        // Rewarded video ad function
+        function showVKRewardedAd(callbacks) {
+            if (window.vkBridgeReady) {
+                if (callbacks && callbacks.onOpen) callbacks.onOpen();
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'reward' })
+                    .then(function(data) {
+                        if (data.result) {
+                            console.log('Rewarded ad shown successfully');
+                            if (callbacks && callbacks.onRewarded) callbacks.onRewarded();
+                        }
+                        if (callbacks && callbacks.onClose) callbacks.onClose();
+                    })
+                    .catch(function(error) {
+                        console.log('Rewarded ad not shown:', error);
+                        if (callbacks && callbacks.onClose) callbacks.onClose();
+                    });
             } else {
-                // Fallback if SDK not ready - grant reward anyway
-                console.log('Yandex SDK not ready, granting reward anyway');
+                // Fallback if VK Bridge not ready
+                console.log('VK Bridge not ready, granting reward anyway');
                 if (callbacks && callbacks.onRewarded) callbacks.onRewarded();
                 if (callbacks && callbacks.onClose) callbacks.onClose();
             }
         }
 
-        // Fullscreen ad function
-        function showYandexFullscreenAd(callbacks) {
-            if (window.ysdk) {
-                // Stop gameplay before showing ad
-                notifyGameplayStop();
-                window.ysdk.adv.showFullscreenAdv({
-                    callbacks: {
-                        onOpen: function() {
-                            console.log('Fullscreen ad open.');
-                            if (callbacks && callbacks.onOpen) callbacks.onOpen();
-                        },
-                        onClose: function(wasShown) {
-                            console.log('Fullscreen ad closed, wasShown:', wasShown);
-                            // Resume gameplay after ad closes
-                            notifyGameplayStart();
-                            if (callbacks && callbacks.onClose) callbacks.onClose(wasShown);
-                        },
-                        onError: function(e) {
-                            console.log('Error while open fullscreen ad:', e);
-                            // Resume gameplay on error as well
-                            notifyGameplayStart();
-                            if (callbacks && callbacks.onError) callbacks.onError(e);
-                        }
-                    }
-                });
+        // Fullscreen interstitial ad function
+        function showVKInterstitialAd(callbacks) {
+            if (window.vkBridgeReady) {
+                if (callbacks && callbacks.onOpen) callbacks.onOpen();
+                vkBridge.send('VKWebAppShowNativeAds', { ad_format: 'interstitial' })
+                    .then(function(data) {
+                        console.log('Interstitial ad shown, result:', data.result);
+                        if (callbacks && callbacks.onClose) callbacks.onClose(data.result);
+                    })
+                    .catch(function(error) {
+                        console.log('Interstitial ad not shown:', error);
+                        if (callbacks && callbacks.onClose) callbacks.onClose(false);
+                    });
             } else {
-                // Fallback if SDK not ready
+                // Fallback if VK Bridge not ready
                 if (callbacks && callbacks.onClose) callbacks.onClose(false);
             }
         }
 
-        // Ready and Gameplay API
-        function notifyGameReady() {
-            if (window.ysdk && window.ysdk.features && window.ysdk.features.LoadingAPI) {
-                window.ysdk.features.LoadingAPI.ready();
-                console.log('Yandex LoadingAPI.ready() called');
+        // IAP purchase function (only for VK, not Odnoklassniki)
+        window.showVKPurchase = function(itemId, onSuccess, onError) {
+            if (window.isOdnoklassniki) {
+                console.log('Purchases not supported in Odnoklassniki');
+                if (onError) onError('not_supported');
+                return;
             }
-        }
+            vkBridge.send('VKWebAppShowOrderBox', { type: 'item', item: itemId })
+                .then(function(data) {
+                    if (data.success) {
+                        console.log('Purchase successful, order_id:', data.order_id);
+                        if (onSuccess) onSuccess(data.order_id);
+                    }
+                })
+                .catch(function(error) {
+                    console.error('Purchase failed or cancelled:', error);
+                    if (onError) onError(error);
+                });
+        };
 
-        function notifyGameplayStart() {
-            if (window.ysdk && window.ysdk.features && window.ysdk.features.GameplayAPI) {
-                window.ysdk.features.GameplayAPI.start();
-                console.log('Yandex GameplayAPI.start() called');
-            }
-        }
-
-        function notifyGameplayStop() {
-            if (window.ysdk && window.ysdk.features && window.ysdk.features.GameplayAPI) {
-                window.ysdk.features.GameplayAPI.stop();
-                console.log('Yandex GameplayAPI.stop() called');
-            }
-        }
+        // Lifecycle stubs (VK Bridge has no direct equivalents for LoadingAPI/GameplayAPI)
+        function notifyGameReady() {}
+        function notifyGameplayStart() {}
+        function notifyGameplayStop() {}
 
         // PokiSDK compatibility layer for smooth migration
         window.PokiSDK = {
             init: function() {
-                return initYandexSDK();
+                return initVKBridge();
             },
             gameLoadingFinished: function() {
                 notifyGameReady();
@@ -217,30 +191,24 @@
             },
             commercialBreak: function(callback) {
                 return new Promise(function(resolve) {
-                    showYandexFullscreenAd({
+                    showVKInterstitialAd({
                         onOpen: callback,
                         onClose: function(wasShown) {
                             resolve(wasShown);
-                        },
-                        onError: function() {
-                            resolve(false);
                         }
                     });
                 });
             },
             rewardedBreak: function(callback) {
                 return new Promise(function(resolve) {
-                    let rewarded = false;
-                    showYandexRewardedAd({
+                    var rewarded = false;
+                    showVKRewardedAd({
                         onOpen: callback,
                         onRewarded: function() {
                             rewarded = true;
                         },
                         onClose: function() {
                             resolve(rewarded);
-                        },
-                        onError: function() {
-                            resolve(false);
                         }
                     });
                 });
