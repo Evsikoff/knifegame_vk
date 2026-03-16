@@ -3231,8 +3231,8 @@ ShopController.attributes.add("rewButton", {
     this.initialHeight = null;
     var r = this.entity.screen;
     this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this), this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1;
-    this.arrowLeft.script.myButton.action = () => this.switchPage(-1);
-    this.arrowRight.script.myButton.action = () => this.switchPage(1);
+    if (this.arrowLeft && this.arrowLeft.script && this.arrowLeft.script.myButton) this.arrowLeft.script.myButton.action = () => this.switchPage(-1);
+    if (this.arrowRight && this.arrowRight.script && this.arrowRight.script.myButton) this.arrowRight.script.myButton.action = () => this.switchPage(1);
 }, ShopController.prototype.unlockRandomSkin = function() {
     for (var t = [], e = 0; e < ShopController.shopItems.length; e++) ShopController.shopItems[e].unlocked || t.push(ShopController.shopItems[e].shopItem);
     if (0 == t.length) return 1;
