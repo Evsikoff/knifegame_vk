@@ -1679,7 +1679,7 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
         gameInstance.lastCurrLevel = -1;
         for (var i = 0; i < ShopController.shopItems.length; i++) {
             var t = Savefile.get("skin" + i.toString());
-            t = 0 !== t, 0 === i && (t = !0), ShopController.shopItems[i].unlocked = t;
+            t = 0 !== t, i < 5 && (t = !0), ShopController.shopItems[i].unlocked = t;
         }
         gameInstance.currScore = 0;
         gameInstance.score = 0;
@@ -3169,14 +3169,14 @@ var ShopController = pc.createScript("shopController");
 ShopController.attributes.add("rewButton", {
     type: "entity"
 }), ShopController.shopItems = [], ShopController.shopItemsCount = 0, ShopController.openedFromScore = !1, ShopController.createSkins = function() {
-    ShopController.createSkin("1", 0, 0, 0, -1, -1), ShopController.createSkin("2", 0, 1, 1, -1, -1), ShopController.createSkin("3", 0, 1, 2, -1, -1), ShopController.createSkin("4", 0, 1, 3, 5, 1), ShopController.createSkin("5", 0, 1, 4, 0, 1), ShopController.createSkin("6", 25, 1, 5, 1, 1), ShopController.createSkin("7", 25, 1, 6, 2, 1), ShopController.createSkin("8", 50, 1, 7, 3, 1), ShopController.createSkin("9", 50, 1, 8, 4, 1)
+    ShopController.createSkin("1", 0, 0, 0, -1, -1), ShopController.createSkin("2", 0, 1, 1, -1, -1), ShopController.createSkin("3", 0, 1, 2, -1, -1), ShopController.createSkin("4", 0, 1, 3, 5, 1), ShopController.createSkin("5", 0, 1, 4, 0, 1), ShopController.createSkin("6", 25, 1, 5, 1, 1), ShopController.createSkin("7", 85, 1, 6, 2, 1), ShopController.createSkin("8", 145, 1, 7, 3, 1), ShopController.createSkin("9", 250, 1, 8, 4, 1)
 }, ShopController.applySkin = function(t, e) {}, ShopController.createSkin = function(t, e, o, n, r, l) {
     var i = {
         name: t,
         price: e,
         enableRotation: o,
         iconIndex: n,
-        unlocked: (!1, !0),
+        unlocked: !1,
         dropId: r,
         dropOnKick: l,
         itemId: ShopController.shopItemsCount,
@@ -3209,11 +3209,30 @@ ShopController.attributes.add("rewButton", {
     if (ShopController.instance) return 0;
     var t;
     ShopController.instance = this, this.lockColor = (new pc.Color).fromString("#99AEC2"), this.unlockColor = (new pc.Color).fromString("#9F7DFF"), this.shopItem = this.entity.findByName("shopItem"), this.shopButs = [];
-    for (var e = 0, o = -250; o <= 250; o += 250)
-        for (var n = -230; n <= 230; n += 230) t = this.shopItem.clone(), ShopController.shopItems[e].shopItem = t, t.script.scaler.delay = .08 * ShopController.shopItems[e].iconIndex, this.buttonsHandler.addChild(t), t.setLocalPosition(n, 25 - o, 0), (t = t.script.shopItem).initialize(), t.setShopItem(e), this.shopButs.push(t), e++;
-    this.shopItem.enabled = !1, this.initialHeight = null;
+    this.currPage = 0;
+    for (var e = 0; e < ShopController.shopItems.length; e++) {
+        t = this.shopItem.clone();
+        ShopController.shopItems[e].shopItem = t;
+        t.script.scaler.delay = .08 * ShopController.shopItems[e].iconIndex;
+        this.buttonsHandler.addChild(t);
+        var pageIdx = e < 5 ? 0 : 1;
+        var idxInPage = e < 5 ? e : e - 5;
+        var col = idxInPage % 3;
+        var row = Math.floor(idxInPage / 3);
+        var posX = (col - 1) * 230;
+        var posY = 25 - (row * 250);
+        t.setLocalPosition(posX, posY, 0);
+        var si = t.script.shopItem; si.initialize();
+        si.setShopItem(e);
+        this.shopButs.push(si);
+    }
+    this.shopItem.enabled = !1;
+    this.shopItem.setLocalPosition(10000, 10000, 10000);
+    this.initialHeight = null;
     var r = this.entity.screen;
-    this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this), this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1
+    this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this), this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1;
+    this.arrowLeft.script.myButton.action = () => this.switchPage(-1);
+    this.arrowRight.script.myButton.action = () => this.switchPage(1);
 }, ShopController.prototype.unlockRandomSkin = function() {
     for (var t = [], e = 0; e < ShopController.shopItems.length; e++) ShopController.shopItems[e].unlocked || t.push(ShopController.shopItems[e].shopItem);
     if (0 == t.length) return 1;
@@ -3239,10 +3258,14 @@ ShopController.attributes.add("rewButton", {
         e.script.textScaler.start(!0), this.unlockSteps <= 0 ? (this.unlocking = !1, e.script.shopItem.shopItem.unlocked = !0, Game.instance.chosenSkinId = e.script.shopItem.shopItem.itemId, this.updateSkinButtons(), GameAudio.play("openknife"), Game.instance.saveGame(), this.itemsAvailable() ? this.allKnivesUnlockedMsg.enabled = !1 : this.allKnivesUnlockedMsg.enabled = !0) : GameAudio.play("pop2")
     }
 }, ShopController.prototype.updateSkinButtons = function() {
-    for (var t = 0; t < this.shopButs.length; t++) this.shopButs[t].updateState()
+    for (var t = 0; t < this.shopButs.length; t++) {
+        var pageIdx = t < 5 ? 0 : 1;
+        this.shopButs[t].entity.enabled = (pageIdx === this.currPage);
+        this.shopButs[t].updateState();
+    }
 }, ShopController.prototype.onEnable = function() {
     var t = this.entity.screen;
-    window.innerHeight > window.innerWidth ? (t.referenceResolution.y = this.initialHeight + 170, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)) : (t.referenceResolution.y = this.initialHeight, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)), this.itemsAvailable() ? this.allKnivesUnlockedMsg.enabled = !1 : this.allKnivesUnlockedMsg.enabled = !0, this.updateRewardButton(!0), this.updateSkinButtons()
+    window.innerHeight > window.innerWidth ? (t.referenceResolution.y = this.initialHeight + 170, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)) : (t.referenceResolution.y = this.initialHeight, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)), this.itemsAvailable() ? this.allKnivesUnlockedMsg.enabled = !1 : this.allKnivesUnlockedMsg.enabled = !0, this.updateRewardButton(!0), this.currPage = 0, this.updateSkinButtons(), this.updateArrows()
 }, ShopController.prototype.showItem = function(t) {
     this.shownItemId = t;
     for (var e = 0; e < this.modelEntity.children.length; e++) e == t ? this.modelEntity.children[e].enabled = !0 : this.modelEntity.children[e].enabled = !1;
@@ -3265,7 +3288,14 @@ ShopController.attributes.add("rewButton", {
 }, ShopController.prototype.switchItem = function(t) {
     this.shownItemId += t, this.shownItemId >= ShopController.shopItemsCount - 1 ? this.shownItemId = ShopController.shopItemsCount - 1 : this.shownItemId < 0 && (this.shownItemId = 0), this.showItem(this.shownItemId)
 }, ShopController.prototype.updateArrows = function(t) {
-    this.arrowLeft.enabled = !0, this.arrowRight.enabled = !0, this.shownItemId >= ShopController.shopItemsCount - 1 && (this.arrowRight.enabled = !1), this.shownItemId <= 0 && (this.arrowLeft.enabled = !1)
+    if (this.arrowLeft) this.arrowLeft.enabled = this.currPage > 0;
+    if (this.arrowRight) this.arrowRight.enabled = this.currPage < 1;
+}, ShopController.prototype.switchPage = function(t) {
+    this.currPage += t;
+    if (this.currPage < 0) this.currPage = 0;
+    if (this.currPage > 1) this.currPage = 1;
+    this.updateSkinButtons();
+    this.updateArrows();
 };
 var BestScore = pc.createScript("bestScore");
 BestScore.prototype.initialize = function() {}, BestScore.prototype.update = function(t) {
@@ -3379,7 +3409,10 @@ ShopItem.prototype.initialize = function() {
     this.shopItem = e, this.buy.shopItem = e, this.circBut.shopItem = e, EntityTools.removeAllChildsExceptOne(this.icons, e.iconIndex), EntityTools.removeAllChildsExceptOne(this.shadows, e.iconIndex), this.starNum.element.text = e.price.toString(), this.updateState()
 }, ShopItem.prototype.updateState = function() {
     var t = this.shopItem;
-    t.unlocked ? (this.buy.entity.enabled = !1, this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor) : (this.buy.entity.enabled = t.price > 0, this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1), t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1
+    t.unlocked ? (this.buy.entity.enabled = !1, this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor) : (this.buy.entity.enabled = t.price > 0, this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1), t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1;
+    if (this.buy.entity.enabled && this.starNum) {
+        this.starNum.element.text = t.price.toString();
+    }
 };
 var ElementShadow = pc.createScript("elementShadow");
 ElementShadow.attributes.add("shadowOffsetX", {
