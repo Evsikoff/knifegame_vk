@@ -981,6 +981,19 @@ FadeScreen.attributes.add("fadeScreenImage", {
 }, FadeScreen.dl = new Date(2031, 4, 21, 15, 30, 10), FadeScreen.prototype.start = function() {
     this.fadeScreenImage.enabled = !0, this.onlyFadeOut ? (this.state = 2, this.fadeScreenImage.element.opacity = 1, this.action && this.action(), this.actionDelay = this.actionDelayTime, this.actionDelayTime = .1) : (this.state = 1, this.fadeScreenImage.element.opacity = 0)
 }, FadeScreen.prototype.update = function(e) {
+    if (this.fadeScreenImage && this.fadeScreenImage.enabled && this.fadeScreenImage.element.opacity > 0.9) {
+        if (!this._whiteScreenSafeTimer) this._whiteScreenSafeTimer = 0;
+        this._whiteScreenSafeTimer += e;
+        if (this._whiteScreenSafeTimer > 2) {
+             console.warn("FadeScreen: Stuck detected, force hiding");
+             this.fadeScreenImage.enabled = !1;
+             this.fading = !1;
+             this.state = 0;
+             this._whiteScreenSafeTimer = 0;
+        }
+    } else {
+        this._whiteScreenSafeTimer = 0;
+    }
     if (this.actionDelay > 0) return this.actionDelay -= e, 1;
     if (this.fading) {
         if (this.delay > 0) return this.delay -= e, void(this.delay <= 0 && this.start());
@@ -3169,7 +3182,17 @@ var ShopController = pc.createScript("shopController");
 ShopController.attributes.add("rewButton", {
     type: "entity"
 }), ShopController.shopItems = [], ShopController.shopItemsCount = 0, ShopController.openedFromScore = !1, ShopController.createSkins = function() {
-    ShopController.createSkin("1", 0, 0, 0, -1, -1), ShopController.createSkin("2", 0, 1, 1, -1, -1), ShopController.createSkin("3", 0, 1, 2, -1, -1), ShopController.createSkin("4", 0, 1, 3, 5, 1), ShopController.createSkin("5", 0, 1, 4, 0, 1), ShopController.createSkin("6", 25, 1, 5, 1, 1), ShopController.createSkin("7", 85, 1, 6, 2, 1), ShopController.createSkin("8", 145, 1, 7, 3, 1), ShopController.createSkin("9", 250, 1, 8, 4, 1)
+    ShopController.shopItems = [];
+    ShopController.shopItemsCount = 0;
+    ShopController.createSkin("1", 0, 0, 0, -1, -1);
+    ShopController.createSkin("2", 0, 1, 1, -1, -1);
+    ShopController.createSkin("3", 0, 1, 2, -1, -1);
+    ShopController.createSkin("4", 0, 1, 3, 5, 1);
+    ShopController.createSkin("5", 0, 1, 4, 0, 1);
+    ShopController.createSkin("6", 25, 1, 5, 1, 1);
+    ShopController.createSkin("7", 85, 1, 6, 2, 1);
+    ShopController.createSkin("8", 145, 1, 7, 3, 1);
+    ShopController.createSkin("9", 250, 1, 8, 4, 1);
 }, ShopController.applySkin = function(t, e) {}, ShopController.createSkin = function(t, e, o, n, r, l) {
     var i = {
         name: t,
@@ -3206,14 +3229,18 @@ ShopController.attributes.add("rewButton", {
 }), ShopController.attributes.add("arrowRight", {
     type: "entity"
 }), ShopController.openedFromScore = !1, ShopController.instance = null, ShopController.prototype.initialize = function() {
-    if (ShopController.instance) return 0;
+    console.log("ShopController.initialize started");
+    if (ShopController.instance) return console.log("ShopController.instance already exists"), 0;
     var t;
     ShopController.instance = this, this.lockColor = (new pc.Color).fromString("#99AEC2"), this.unlockColor = (new pc.Color).fromString("#9F7DFF"), this.shopItem = this.entity.findByName("shopItem"), this.shopButs = [];
+    if (!this.shopItem) return console.error("ShopController: shopItem entity not found"), 0;
+    if (!this.buttonsHandler) return console.error("ShopController: buttonsHandler entity not found"), 0;
     this.currPage = 0;
+    console.log("Creating shop items, count:", ShopController.shopItems.length);
     for (var e = 0; e < ShopController.shopItems.length; e++) {
         t = this.shopItem.clone();
         ShopController.shopItems[e].shopItem = t;
-        t.script.scaler.delay = .08 * ShopController.shopItems[e].iconIndex;
+        if (t.script && t.script.scaler) t.script.scaler.delay = .08 * ShopController.shopItems[e].iconIndex;
         this.buttonsHandler.addChild(t);
         var pageIdx = e < 5 ? 0 : 1;
         var idxInPage = e < 5 ? e : e - 5;
@@ -3222,17 +3249,24 @@ ShopController.attributes.add("rewButton", {
         var posX = (col - 1) * 230;
         var posY = 25 - (row * 250);
         t.setLocalPosition(posX, posY, 0);
-        var si = t.script.shopItem; si.initialize();
-        si.setShopItem(e);
-        this.shopButs.push(si);
+        var si = t.script.shopItem;
+        if (si) {
+            si.initialize();
+            si.setShopItem(e);
+            this.shopButs.push(si);
+        } else {
+            console.warn("ShopController: item clone at index", e, "missing shopItem script");
+        }
     }
     this.shopItem.enabled = !1;
     this.shopItem.setLocalPosition(10000, 10000, 10000);
     this.initialHeight = null;
     var r = this.entity.screen;
-    this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this), this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1;
+    if (r) this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this);
+    this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1;
     if (this.arrowLeft && this.arrowLeft.script && this.arrowLeft.script.myButton) this.arrowLeft.script.myButton.action = () => this.switchPage(-1);
     if (this.arrowRight && this.arrowRight.script && this.arrowRight.script.myButton) this.arrowRight.script.myButton.action = () => this.switchPage(1);
+    console.log("ShopController.initialize finished");
 }, ShopController.prototype.unlockRandomSkin = function() {
     for (var t = [], e = 0; e < ShopController.shopItems.length; e++) ShopController.shopItems[e].unlocked || t.push(ShopController.shopItems[e].shopItem);
     if (0 == t.length) return 1;
