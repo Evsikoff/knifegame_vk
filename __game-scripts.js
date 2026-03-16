@@ -1970,7 +1970,7 @@ Gui.instance = null, Gui.pages = [], Gui.prototype.initialize = function() {}, G
                 FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
             } else {
                 window.showVKPurchase && window.showVKPurchase("strar", function() {
-                    Game.instance.addStars(25), Game.instance.saveGame(), ShopController.instance && ShopController.instance.updateSkinButtons();
+                    Game.instance.addStars(25), FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance && ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
                 });
             }
             break;
