@@ -1660,7 +1660,7 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
         })), window.addEventListener("wheel", (e => e.preventDefault()), {
             passive: !1
         }), Game.instance = this, this.shopRewardCooldownCurr = 0, this.shopRewardCooldown = 300, this.hdEnabled = !1, this.slomo = 1, this.streak = 0, this.streakTimer = 0, pc.Application.getApplication().scene.layers.getLayerByName("UIWorld").clearDepthBuffer = !0, this.canvas = this.app.root.findByName("Canvas"), this.canvas2 = this.app.root.findByName("Canvas2"), this.whiteColor = (new pc.Color).fromString("#FFFFFF"), this.yellowColor = (new pc.Color).fromString("#FFF25E"), this.orangeColor = (new pc.Color).fromString("#FFA355"), this.greenColor = (new pc.Color).fromString("#89FF25"), this.blackColor = (new pc.Color).fromString("#000000"), Game.state = 0, this.controlsEnabled = !0, this.gotReviveChance = !1, this.grounds = [], this.lastPos = new pc.Vec3(0, 0, 0), this.levels = [], this.levelLengths = [], this.levelInfos = [], e = 0; e <= 80; e++) l = this.app.root.findByName("Level" + e.toString()), l ? (l.tags.add("level"), l.enabled = !1, this.levels.push(l)) : this.levels.push(null);
-    this.levelCreationThresholdX = 180, this.levelCreationEnabled = !1, this.levelObjectsE = new pc.Entity, this.app.root.addChild(this.levelObjectsE), this.levelObjectsSliced = new pc.Entity, this.app.root.addChild(this.levelObjectsSliced), this.gameOverReason = "", this.bonusOperator = null, this.resultType = 0, this.gameOver.enabled = !1, this.uiFailed.enabled = !1, this.uiCompleted.enabled = !1, this.money = 0, this.envType = 1, this.envTypeSameCount = 0, Savefile.addKey("bestScore", 0), Savefile.addKey("money", 0), Savefile.addKey("currLevel", 0), Savefile.addKey("firstLaunch", 1), Savefile.addKey("firstKnifeTapped", 0), Savefile.addKey("chosenSkinId", 0), Savefile.addKey("envType", 1), Savefile.addKey("envTypeSameCount", 0), ShopController.createSkins();
+    this.levelCreationThresholdX = 180, this.levelCreationEnabled = !1, this.levelObjectsE = new pc.Entity, this.app.root.addChild(this.levelObjectsE), this.levelObjectsSliced = new pc.Entity, this.app.root.addChild(this.levelObjectsSliced), this.gameOverReason = "", this.bonusOperator = null, this.resultType = 0, this.gameOver.enabled = !1, this.uiFailed.enabled = !1, this.uiCompleted.enabled = !1, this.money = 0, this.envType = 1, this.envTypeSameCount = 0, Savefile.addKey("bestScore", 0), Savefile.addKey("money", 0), Savefile.addKey("currLevel", 0), Savefile.addKey("firstLaunch", 1), Savefile.addKey("firstKnifeTapped", 0), Savefile.addKey("chosenSkinId", 0), Savefile.addKey("envType", 1), Savefile.addKey("envTypeSameCount", 0), Savefile.addKey("stars", 0), ShopController.createSkins();
     for (var e = 0; e < ShopController.shopItems.length; e++) Savefile.addKey("skin" + e.toString(), 0);
     // Load save data (will try Yandex Cloud first, then localStorage)
     var gameInstance = this;
@@ -1674,6 +1674,7 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
         gameInstance.chosenSkinId = Savefile.get("chosenSkinId");
         gameInstance.envType = Savefile.get("envType");
         gameInstance.envTypeSameCount = Savefile.get("envTypeSameCount");
+        gameInstance.stars = Savefile.get("stars");
         gameInstance.money < 0 && (gameInstance.money = 5e4);
         gameInstance.lastCurrLevel = -1;
         for (var i = 0; i < ShopController.shopItems.length; i++) {
@@ -1727,7 +1728,7 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
         }))
     }), 100)
 }, Game.prototype.saveGame = function() {
-    Savefile.set("firstKnifeTapped", this.firstKnifeTapped), Savefile.set("firstLaunch", this.firstLaunch), Savefile.set("currLevel", this.currLevel), Savefile.set("chosenSkinId", this.chosenSkinId), Savefile.set("money", this.money), Savefile.set("bestScore", this.bestScore), Savefile.set("envType", this.envType), Savefile.set("envTypeSameCount", this.envTypeSameCount);
+    Savefile.set("firstKnifeTapped", this.firstKnifeTapped), Savefile.set("firstLaunch", this.firstLaunch), Savefile.set("currLevel", this.currLevel), Savefile.set("chosenSkinId", this.chosenSkinId), Savefile.set("money", this.money), Savefile.set("bestScore", this.bestScore), Savefile.set("envType", this.envType), Savefile.set("envTypeSameCount", this.envTypeSameCount), Savefile.set("stars", this.stars);
     for (var e = 0; e < ShopController.shopItems.length; e++) ShopController.shopItems[e].unlocked ? Savefile.set("skin" + e.toString(), 1) : Savefile.set("skin" + e.toString(), 0);
     Savefile.save()
 }, Game.prototype.applyChosenSkin = function() {
@@ -1736,6 +1737,10 @@ Game.tempPos = new pc.Vec3, Game.tempPos2 = new pc.Vec3, Game.instance = null, G
     e.setPosition(Knife.instance.entity.getPosition()), e.setLocalEulerAngles(Knife.instance.entity.getLocalEulerAngles()), CameraController.instance.target = e, Knife.instance = e.script.knife, Savefile.set("chosenSkinId", Game.instance.chosenSkinId), Savefile.save()
 }, Game.prototype.addMoney = function(e, t = !1) {
     this.moneyEarned += e, this.score += e, t || (this.money += e), UiInterface.instance && (UiInterface.instance.score.script.counterText.targetValue = this.score, UiInterface.instance.score.script.textScaler.start(!1))
+}, Game.prototype.addStars = function(e) {
+    if (e < 0 && this.stars < -e) return !1;
+    this.stars += e;
+    return !0
 }, Game.prototype.loadLevel = function() {
     if (this.flushLevel(), this.addedLevelsCount = 0, Game.bonusLevel)
         for (var e = 0; e < Game.bonusIds.length; e++) this.addLevel(Game.bonusIds[e]);
@@ -1960,7 +1965,14 @@ Gui.instance = null, Gui.pages = [], Gui.prototype.initialize = function() {}, G
             s = a.shopItem, s.unlocked && (Game.instance.chosenSkinId = s.itemId), ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
             break;
         case "buyBut":
-            s = a.shopItem, Game.instance.addStars(-s.price) && (FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance.updateSkinButtons(), Game.instance.saveGame());
+            s = a.shopItem;
+            if (Game.instance.addStars(-s.price)) {
+                FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
+            } else {
+                window.showVKPurchase && window.showVKPurchase("strar", function() {
+                    Game.instance.addStars(25), Game.instance.saveGame(), ShopController.instance && ShopController.instance.updateSkinButtons();
+                });
+            }
             break;
         case "shopOpen":
             ShopButton.instance && 0 == Game.instance.firstKnifeTapped && ShopButton.instance.isNewKnifeAvailable() && (Game.instance.firstKnifeTapped = 1, Game.instance.saveGame()), Game.instance.controlsEnabled = !1, FadeScreen.instance.show(.3, 0, 0, (function() {
