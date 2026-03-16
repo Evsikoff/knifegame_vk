@@ -3379,7 +3379,7 @@ ShopItem.prototype.initialize = function() {
     this.shopItem = e, this.buy.shopItem = e, this.circBut.shopItem = e, EntityTools.removeAllChildsExceptOne(this.icons, e.iconIndex), EntityTools.removeAllChildsExceptOne(this.shadows, e.iconIndex), this.starNum.element.text = e.price.toString(), this.updateState()
 }, ShopItem.prototype.updateState = function() {
     var t = this.shopItem;
-    t.unlocked ? (this.buy.entity.enabled = !1, this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor) : (this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1), t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1
+    t.unlocked ? (this.buy.entity.enabled = !1, this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor) : (this.buy.entity.enabled = t.price > 0, this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1), t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1
 };
 var ElementShadow = pc.createScript("elementShadow");
 ElementShadow.attributes.add("shadowOffsetX", {
