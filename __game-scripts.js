@@ -3299,10 +3299,11 @@ CoinsText.prototype.initialize = function() {
         e = Math.floor(e / 100), this.entity.element.text = e > 0 ? Math.floor(this.count / 1e3).toString() + "." + e.toString() + "k" : Math.floor(this.count / 1e3).toString() + "k"
     } else this.entity.element.text = Math.round(this.count).toString()
 }, CoinsText.moneyToText = function(t) {
-    if (this.count >= 1e3) {
-        var e = this.count % 1e3;
-        (e = Math.floor(e / 100)) > 0 ? Math.floor(t / 1e3).toString() + "." + e.toString() + "k" : Math.floor(t / 1e3).toString() + "k"
-    } else Math.round(t).toString()
+    if (t >= 1e3) {
+        var e = t % 1e3;
+        return (e = Math.floor(e / 100)) > 0 ? Math.floor(t / 1e3).toString() + "." + e.toString() + "k" : Math.floor(t / 1e3).toString() + "k"
+    }
+    return Math.round(t).toString()
 };
 var CounterText = pc.createScript("counterText");
 CounterText.attributes.add("targetValue", {
@@ -3532,7 +3533,7 @@ UnlockButton.attributes.add("price", {
 }, UnlockButton.prototype.update = function(t) {
     var e = Game.instance.getSkinPrice();
     if (e > 0) {
-        if (this.count = e, this.count >= 1e3) {
+        if (this.count = e, this.count >= 1e5) {
             var n = this.count % 1e3;
             n = Math.floor(n / 100), this.price.element.text = n > 0 ? "$ " + Math.floor(this.count / 1e3).toString() + "." + n.toString() + "k" : "$ " + Math.floor(this.count / 1e3).toString() + "k"
         } else this.price.element.text = "$ " + Math.round(this.count).toString();
