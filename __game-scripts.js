@@ -3935,7 +3935,7 @@ MoneyForAdbutton.attributes.add("text", {
     MoneyForAdbutton.instance = this, this.count = 0, this.onEnableCb(), this.on("enable", this.onEnableCb, this)
 }, MoneyForAdbutton.prototype.onEnableCb = function(t) {}, MoneyForAdbutton.prototype.reconfigure = function(t) {
     if (this.count = t, t > 0)
-        if (this.count >= 1e3) {
+        if (this.count >= 1e5) {
             var o = this.count % 1e3;
             o = Math.floor(o / 100), this.text.element.text = o > 0 ? "$ " + Math.floor(this.count / 1e3).toString() + "." + o.toString() + "k" : "$ " + Math.floor(this.count / 1e3).toString() + "k"
         } else this.text.element.text = "$ " + Math.round(this.count).toString()
