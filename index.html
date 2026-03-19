@@ -53,8 +53,11 @@
 
         // Initialize VK Bridge with timeout fallback for non-VK environments
         function initVKBridge() {
+            var timeoutId = null;
+
             var bridgePromise = vkBridge.send('VKWebAppInit')
                 .then(function(data) {
+                    clearTimeout(timeoutId);
                     if (data.result) {
                         window.vkBridgeReady = true;
                         console.log('VK Bridge initialized successfully');
@@ -62,13 +65,14 @@
                     return data.result;
                 })
                 .catch(function(error) {
+                    clearTimeout(timeoutId);
                     console.error('VK Bridge initialization failed:', error);
                     window.vkBridgeReady = false;
                     return false;
                 });
 
             var timeoutPromise = new Promise(function(resolve) {
-                setTimeout(function() {
+                timeoutId = setTimeout(function() {
                     console.warn('VK Bridge init timed out — running outside VK iframe?');
                     window.vkBridgeReady = false;
                     resolve(false);

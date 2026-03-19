@@ -3358,15 +3358,10 @@ CoinsText.prototype.initialize = function() {
     this.count = Game.instance.money
 }, CoinsText.prototype.update = function(t) {
     if (!Game.instance || Game.instance.money === undefined) return;
-    if (this.count = pc.math.lerp(this.count, Game.instance.money, 10 * t), this.count >= 1e3) {
-        var e = this.count % 1e3;
-        e = Math.floor(e / 100), this.entity.element.text = e > 0 ? Math.floor(this.count / 1e3).toString() + "." + e.toString() + "k" : Math.floor(this.count / 1e3).toString() + "k"
-    } else this.entity.element.text = Math.round(this.count).toString()
+    this.count = pc.math.lerp(this.count, Game.instance.money, 10 * t);
+    this.entity.element.text = Math.round(this.count).toString()
 }, CoinsText.moneyToText = function(t) {
-    if (this.count >= 1e3) {
-        var e = this.count % 1e3;
-        (e = Math.floor(e / 100)) > 0 ? Math.floor(t / 1e3).toString() + "." + e.toString() + "k" : Math.floor(t / 1e3).toString() + "k"
-    } else Math.round(t).toString()
+    return Math.round(t).toString()
 };
 var CounterText = pc.createScript("counterText");
 CounterText.attributes.add("targetValue", {
@@ -3603,10 +3598,8 @@ UnlockButton.attributes.add("price", {
 }, UnlockButton.prototype.update = function(t) {
     var e = Game.instance.getSkinPrice();
     if (e > 0) {
-        if (this.count = e, this.count >= 1e3) {
-            var n = this.count % 1e3;
-            n = Math.floor(n / 100), this.price.element.text = n > 0 ? "$ " + Math.floor(this.count / 1e3).toString() + "." + n.toString() + "k" : "$ " + Math.floor(this.count / 1e3).toString() + "k"
-        } else this.price.element.text = "$ " + Math.round(this.count).toString();
+        this.count = e;
+        this.price.element.text = "$ " + Math.round(this.count).toString();
         this.count > Game.instance.money ? (this.entity.script.myButton.clickable = !1, this.grey.enabled = !0) : (this.entity.script.myButton.clickable = !0, this.grey.enabled = !1), ShopController.instance.unlocking && (this.entity.script.myButton.clickable = !1), this.entity.enabled = !0
     } else this.entity.enabled = !1
 };
@@ -4006,10 +3999,7 @@ MoneyForAdbutton.attributes.add("text", {
     MoneyForAdbutton.instance = this, this.count = 0, this.onEnableCb(), this.on("enable", this.onEnableCb, this)
 }, MoneyForAdbutton.prototype.onEnableCb = function(t) {}, MoneyForAdbutton.prototype.reconfigure = function(t) {
     if (this.count = t, t > 0)
-        if (this.count >= 1e3) {
-            var o = this.count % 1e3;
-            o = Math.floor(o / 100), this.text.element.text = o > 0 ? "$ " + Math.floor(this.count / 1e3).toString() + "." + o.toString() + "k" : "$ " + Math.floor(this.count / 1e3).toString() + "k"
-        } else this.text.element.text = "$ " + Math.round(this.count).toString()
+        this.text.element.text = "$ " + Math.round(this.count).toString()
 }, MoneyForAdbutton.prototype.update = function(t) {};
 var UiSerpantine = pc.createScript("uiSerpantine");
 UiSerpantine.attributes.add("colors", {
