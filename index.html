@@ -51,9 +51,9 @@
             e.preventDefault();
         }, { passive: false });
 
-        // Initialize VK Bridge
+        // Initialize VK Bridge with timeout fallback for non-VK environments
         function initVKBridge() {
-            return vkBridge.send('VKWebAppInit')
+            var bridgePromise = vkBridge.send('VKWebAppInit')
                 .then(function(data) {
                     if (data.result) {
                         window.vkBridgeReady = true;
@@ -66,45 +66,69 @@
                     window.vkBridgeReady = false;
                     return false;
                 });
+
+            var timeoutPromise = new Promise(function(resolve) {
+                setTimeout(function() {
+                    console.warn('VK Bridge init timed out — running outside VK iframe?');
+                    window.vkBridgeReady = false;
+                    resolve(false);
+                }, 3000);
+            });
+
+            return Promise.race([bridgePromise, timeoutPromise]);
+        }
+
+        // Helper: race a promise against a timeout
+        function withTimeout(promise, ms, fallback) {
+            var timeout = new Promise(function(resolve) {
+                setTimeout(function() { resolve(fallback); }, ms);
+            });
+            return Promise.race([promise, timeout]);
         }
 
         // VK Storage save function (replaces Yandex Cloud save)
         window.saveToVKStorage = function(data) {
             var progressString = JSON.stringify(data);
-            return vkBridge.send('VKWebAppStorageSet', {
-                key: 'gameState',
-                value: progressString
-            })
-                .then(function(res) {
-                    if (res.result) {
-                        console.log('Data saved to VK Storage');
-                    }
-                    return res.result;
+            return withTimeout(
+                vkBridge.send('VKWebAppStorageSet', {
+                    key: 'gameState',
+                    value: progressString
                 })
-                .catch(function(error) {
-                    console.error('Failed to save to VK Storage:', error);
-                    return false;
-                });
+                    .then(function(res) {
+                        if (res.result) {
+                            console.log('Data saved to VK Storage');
+                        }
+                        return res.result;
+                    })
+                    .catch(function(error) {
+                        console.error('Failed to save to VK Storage:', error);
+                        return false;
+                    }),
+                3000, false
+            );
         };
 
         // VK Storage load function (replaces Yandex Cloud load)
         window.loadFromVKStorage = function() {
-            return vkBridge.send('VKWebAppStorageGet', { keys: ['gameState'] })
-                .then(function(data) {
-                    if (data.keys) {
-                        var entry = data.keys.find(function(k) { return k.key === 'gameState'; });
-                        if (entry && entry.value) {
-                            var progressObj = JSON.parse(entry.value);
-                            console.log('Data loaded from VK Storage:', progressObj);
-                            return progressObj;
+            return withTimeout(
+                vkBridge.send('VKWebAppStorageGet', { keys: ['gameState'] })
+                    .then(function(data) {
+                        if (data.keys) {
+                            var entry = data.keys.find(function(k) { return k.key === 'gameState'; });
+                            if (entry && entry.value) {
+                                var progressObj = JSON.parse(entry.value);
+                                console.log('Data loaded from VK Storage:', progressObj);
+                                return progressObj;
+                            }
                         }
-                    }
-                    return null;
-                })
-                .catch(function(error) {
-                    console.error('Failed to load from VK Storage:', error);
-                    return null;
-                });
+                        return null;
+                    })
+                    .catch(function(error) {
+                        console.error('Failed to load from VK Storage:', error);
+                        return null;
+                    }),
+                3000, null
+            );
         };
 
         // Rewarded video ad function

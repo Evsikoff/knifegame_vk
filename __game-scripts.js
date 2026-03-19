@@ -1962,17 +1962,25 @@ Gui.instance = null, Gui.pages = [], Gui.prototype.initialize = function() {}, G
             }));
             break;
         case "circleShopBut":
-            s = a.shopItem, s.unlocked && (Game.instance.chosenSkinId = s.itemId), ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
+            s = a.shopItem;
+            if (s.unlocked) {
+                Game.instance.chosenSkinId = s.itemId;
+            } else if (s.price > 0 && Game.instance.addStars(-s.price)) {
+                FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId;
+                if (ShopController.instance.starsText) ShopController.instance.starsText.element.text = Game.instance.stars.toString();
+            }
+            ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
             break;
         case "buyBut":
-            s = a.shopItem;
-            if (Game.instance.addStars(-s.price)) {
-                FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
-            } else {
-                window.showVKPurchase && window.showVKPurchase("strar", function() {
-                    Game.instance.addStars(25), FadeScreen.instance.show(.3, 0, 1, null), GameAudio.play("buy"), s.unlocked = !0, Game.instance.chosenSkinId = s.itemId, ShopController.instance && ShopController.instance.updateSkinButtons(), Game.instance.saveGame();
-                });
-            }
+            break;
+        case "buyStarsVK":
+            window.showVKPurchase && window.showVKPurchase("strar", function() {
+                Game.instance.addStars(25), GameAudio.play("buy"), Game.instance.saveGame();
+                if (ShopController.instance) {
+                    ShopController.instance.updateSkinButtons();
+                    if (ShopController.instance.starsText) ShopController.instance.starsText.element.text = Game.instance.stars.toString();
+                }
+            });
             break;
         case "shopOpen":
             ShopButton.instance && 0 == Game.instance.firstKnifeTapped && ShopButton.instance.isNewKnifeAvailable() && (Game.instance.firstKnifeTapped = 1, Game.instance.saveGame()), Game.instance.controlsEnabled = !1, FadeScreen.instance.show(.3, 0, 0, (function() {
@@ -3212,6 +3220,53 @@ ShopController.attributes.add("rewButton", {
     for (var e = 0, o = -250; o <= 250; o += 250)
         for (var n = -230; n <= 230; n += 230) t = this.shopItem.clone(), ShopController.shopItems[e].shopItem = t, t.script.scaler.delay = .08 * ShopController.shopItems[e].iconIndex, this.buttonsHandler.addChild(t), t.setLocalPosition(n, 25 - o, 0), (t = t.script.shopItem).initialize(), t.setShopItem(e), this.shopButs.push(t), e++;
     this.shopItem.enabled = !1, this.initialHeight = null;
+    // Create stars balance display
+    this.starsText = this.entity.findByName("StarsBalance");
+    if (!this.starsText) {
+        var starsPanel = new pc.Entity("StarsBalance");
+        starsPanel.addComponent("element", {
+            type: "text",
+            anchor: new pc.Vec4(0.5, 1, 0.5, 1),
+            pivot: new pc.Vec2(0.5, 1),
+            fontAsset: this.buttonsHandler.children[0] ? this.buttonsHandler.children[0].findByName("starNum").element.fontAsset : null,
+            fontSize: 42,
+            color: new pc.Color(1, 0.95, 0.3),
+            outlineColor: new pc.Color(0, 0, 0),
+            outlineThickness: 0.4,
+            text: (Game.instance && Game.instance.stars != null ? Game.instance.stars : 0).toString(),
+            width: 400,
+            height: 60
+        });
+        starsPanel.setLocalPosition(0, 420, 0);
+        this.buttonsHandler.parent.addChild(starsPanel);
+        this.starsText = starsPanel;
+    }
+    // Create "Buy 25 Stars — 25 votes" button
+    this.buyStarsButton = this.entity.findByName("BuyStarsButton");
+    if (!this.buyStarsButton) {
+        var buyBtn = new pc.Entity("BuyStarsButton");
+        buyBtn.addComponent("element", {
+            type: "text",
+            anchor: new pc.Vec4(0.5, 1, 0.5, 1),
+            pivot: new pc.Vec2(0.5, 1),
+            fontAsset: this.starsText.element.fontAsset,
+            fontSize: 36,
+            color: new pc.Color(1, 1, 1),
+            outlineColor: new pc.Color(0, 0, 0),
+            outlineThickness: 0.3,
+            text: "+25 \u2b50 = 25 \u0433\u043e\u043b\u043e\u0441\u043e\u0432",
+            width: 400,
+            height: 50,
+            useInput: true
+        });
+        buyBtn.setLocalPosition(0, 370, 0);
+        buyBtn.addComponent("button", { active: true });
+        buyBtn.button.on("click", function() {
+            Gui.buttonAction("buyStarsVK", {});
+        });
+        this.buttonsHandler.parent.addChild(buyBtn);
+        this.buyStarsButton = buyBtn;
+    }
     var r = this.entity.screen;
     this.initialHeight = r.referenceResolution.y, this.onEnable(), this.on("enable", this.onEnable, this), this.unlocking = !1, this.unlockSteps = 0, this.unlockTimer = 1
 }, ShopController.prototype.unlockRandomSkin = function() {
@@ -3242,12 +3297,21 @@ ShopController.attributes.add("rewButton", {
     for (var t = 0; t < this.shopButs.length; t++) this.shopButs[t].updateState()
 }, ShopController.prototype.onEnable = function() {
     var t = this.entity.screen;
-    window.innerHeight > window.innerWidth ? (t.referenceResolution.y = this.initialHeight + 170, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)) : (t.referenceResolution.y = this.initialHeight, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)), this.itemsAvailable() ? this.allKnivesUnlockedMsg.enabled = !1 : this.allKnivesUnlockedMsg.enabled = !0, this.updateRewardButton(!0), this.updateSkinButtons()
+    window.innerHeight > window.innerWidth ? (t.referenceResolution.y = this.initialHeight + 170, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)) : (t.referenceResolution.y = this.initialHeight, t.resolution = new pc.Vec2(t.referenceResolution.x, t.referenceResolution.y)), this.itemsAvailable() ? this.allKnivesUnlockedMsg.enabled = !1 : this.allKnivesUnlockedMsg.enabled = !0, this.updateRewardButton(!0), this.updateSkinButtons();
+    if (this.starsText) this.starsText.element.text = (Game.instance && Game.instance.stars != null ? Game.instance.stars : 0).toString()
 }, ShopController.prototype.showItem = function(t) {
     this.shownItemId = t;
     for (var e = 0; e < this.modelEntity.children.length; e++) e == t ? this.modelEntity.children[e].enabled = !0 : this.modelEntity.children[e].enabled = !1;
     var o = ShopController.shopItems[this.shownItemId];
-    !0 === o.unlocked || 1 === o.unlocked ? (this.choose.enabled = !0, this.unlock.enabled = !1, this.buy2.enabled = !1) : (this.priceText.element.text = o.price.toString(), this.buy2text.element.text = this.priceText.element.text, this.choose.enabled = !1, Game.instance.stars >= o.price ? (this.unlock.enabled = !0, this.buy2.enabled = !1) : (this.unlock.enabled = !1, this.buy2.enabled = !0)), this.updateArrows()
+    this.buy2.enabled = !1;
+    if (!0 === o.unlocked || 1 === o.unlocked) {
+        this.choose.enabled = !0, this.unlock.enabled = !1;
+    } else {
+        this.priceText.element.text = o.price.toString();
+        this.choose.enabled = !1;
+        this.unlock.enabled = Game.instance.stars >= o.price;
+    }
+    this.updateArrows()
 }, ShopController.prototype.itemsAvailableCount = function() {
     for (var t = 0, e = 0; e < ShopController.shopItems.length; e++) ShopController.shopItems[e].unlocked && t++;
     return t
@@ -3379,7 +3443,14 @@ ShopItem.prototype.initialize = function() {
     this.shopItem = e, this.buy.shopItem = e, this.circBut.shopItem = e, EntityTools.removeAllChildsExceptOne(this.icons, e.iconIndex), EntityTools.removeAllChildsExceptOne(this.shadows, e.iconIndex), this.starNum.element.text = e.price.toString(), this.updateState()
 }, ShopItem.prototype.updateState = function() {
     var t = this.shopItem;
-    t.unlocked ? (this.buy.entity.enabled = !1, this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor) : (this.buy.entity.enabled = t.price > 0, this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1), t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1
+    this.buy.entity.enabled = !1;
+    if (t.unlocked) {
+        this.circBut.clickable = !0, this.icons.children[0].element.color = Game.instance.whiteColor, this.icons.children[0].element.opacity = 1, this.shadows.enabled = !0, this.circElem.color = ShopController.instance.unlockColor, this.starNum.element.text = "";
+    } else {
+        this.circBut.clickable = !0, this.circElem.color = ShopController.instance.lockColor, this.icons.children[0].element.color = Game.instance.blackColor, this.icons.children[0].element.opacity = .6, this.shadows.enabled = !1;
+        if (t.price > 0) this.starNum.element.text = t.price.toString(); else this.starNum.element.text = "";
+    }
+    t.itemId == Game.instance.chosenSkinId ? this.hl.enabled = !0 : this.hl.enabled = !1
 };
 var ElementShadow = pc.createScript("elementShadow");
 ElementShadow.attributes.add("shadowOffsetX", {
